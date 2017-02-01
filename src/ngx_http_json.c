@@ -36,11 +36,25 @@ static const char *ep;
 
 const char *cJSON_GetErrorPtr(void) {return ep;}
 
-static int cJSON_strcasecmp(const char *s1,const char *s2)
+static int cJSON_strcasecmp(const char *s1, const char *s2)
 {
-	if (!s1) return (s1==s2)?0:1;if (!s2) return 1;
-	for(; tolower(*s1) == tolower(*s2); ++s1, ++s2)	if(*s1 == 0)	return 0;
-	return tolower(*(const unsigned char *)s1) - tolower(*(const unsigned char *)s2);
+    if (!s1)
+    {
+        return (s1 == s2) ? 0 : 1; /* both NULL? */
+    }
+    if (!s2)
+    {
+        return 1;
+    }
+    for(; tolower(*(const unsigned char *)s1) == tolower(*(const unsigned char *)s2); ++s1, ++s2)
+    {
+        if (*s1 == '\0')
+        {
+            return 0;
+        }
+    }
+
+    return tolower(*(const unsigned char *)s1) - tolower(*(const unsigned char *)s2);
 }
 
 static void *(*cJSON_malloc)(size_t sz) = malloc;
@@ -469,24 +483,63 @@ static char *print_object(cJSON *item,int depth,int fmt)
 
 	/* Handle failure */
 	if (fail)
-	{
-		for (i=0;i<numentries;i++) {if (names[i]) cJSON_free(names[i]);if (entries[i]) cJSON_free(entries[i]);}
-		cJSON_free(names);cJSON_free(entries);
-		return 0;
-	}
+        {
+            /* free all the printed keys and values */
+            for (i = 0; i < numentries; i++)
+            {
+                if (names[i])
+                {
+                    cJSON_free(names[i]);
+                }
+                if (entries[i])
+                {
+                    cJSON_free(entries[i]);
+                }
+            }
+            cJSON_free(names);
+            cJSON_free(entries);
+            return NULL;
+        }
 	
 	/* Compose the output: */
-	*out='{';ptr=out+1;if (fmt)*ptr++='\n';*ptr=0;
-	for (i=0;i<numentries;i++)
-	{
-		if (fmt) for (j=0;j<depth;j++) *ptr++='\t';
-		strcpy(ptr,names[i]);ptr+=strlen(names[i]);
-		*ptr++=':';if (fmt) *ptr++='\t';
-		strcpy(ptr,entries[i]);ptr+=strlen(entries[i]);
-		if (i!=numentries-1) *ptr++=',';
-		if (fmt) *ptr++='\n';*ptr=0;
-		cJSON_free(names[i]);cJSON_free(entries[i]);
-	}
+	*out = '{';
+        ptr = out + 1;
+        if (fmt)
+        {
+            *ptr++ = '\n';
+        }
+        *ptr = '\0';
+        for (i = 0; i < numentries; i++)
+        {
+            if (fmt)
+            {
+                for (j = 0; j < depth; j++)
+                {
+                    *ptr++='\t';
+                }
+            }
+            tmplen = strlen(names[i]);
+            memcpy(ptr, names[i], tmplen);
+            ptr += tmplen;
+            *ptr++ = ':';
+            if (fmt)
+            {
+                *ptr++ = '\t';
+            }
+            strcpy(ptr, entries[i]);
+            ptr += strlen(entries[i]);
+            if (i != (numentries - 1))
+            {
+                *ptr++ = ',';
+            }
+            if (fmt)
+            {
+                *ptr++ = '\n';
+            }
+            *ptr = '\0';
+            cJSON_free(names[i]);
+            cJSON_free(entries[i]);
+        }
 	
 	cJSON_free(names);cJSON_free(entries);
 	if (fmt) for (i=0;i<depth-1;i++) *ptr++='\t';
